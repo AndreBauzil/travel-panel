@@ -1,0 +1,39 @@
+# Ruby / Rails
+*.gem
+*.rbc
+/.config
+/coverage/
+/db/*.sqlite3
+/db/*.sqlite3-journal
+/log/*
+!/log/.keep
+/node_modules/
+/public/assets
+/public/packs
+/public/packs-test
+/storage/*
+!/storage/.keep
+/tmp/*
+!/tmp/.keep
+.byebug_history
+.rspec
+.rubocop.yml
+.rubocop_cache/
+.ruby-version
+.ruby-gemset
+Gemfile.lock
+spec/reports/
+
+# Node / Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.DS_Store
+/frontend/*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor
+.idea
+.vscode
