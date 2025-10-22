@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
-  # Mapeia requisições GET para /weather para a ação 'index' do WeatherController
-  get '/weather', to: 'weather#index'
+  # Mapeia requisições GET para /city_info para a ação 'index' do CityInfoController
+  get '/city_info', to: 'city_info#index'
   
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
