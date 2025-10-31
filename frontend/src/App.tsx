@@ -1,13 +1,11 @@
 // frontend/src/App.tsx
 import { useState } from 'react';
 import axios from 'axios';
-
 import {
-  AppShell, Burger, Group, TextInput, Button, Paper, Text, Image, Center, Loader, Alert, ActionIcon, Card, SimpleGrid, Title
+  AppShell, Group, TextInput, Button, Paper, Text, Image, Center, Loader, Alert, ActionIcon, Card, SimpleGrid, Title, Container, Stack, Grid
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconAlertCircle, IconLayoutSidebarLeftCollapse, IconLayoutSidebarRightCollapse, IconCloud } from '@tabler/icons-react';
-
+import { IconAlertCircle, IconLayoutSidebarLeftCollapse, IconLayoutSidebarRightCollapse } from '@tabler/icons-react';
 
 interface CityInfoData {
   city: string;
@@ -16,9 +14,9 @@ interface CityInfoData {
     description: string;
     icon: string;
   };
-  photo: {
-    url: string | null; // Nulo caso não encontrar foto
-    photographer: string | null;
+  wikipedia: { 
+    summary: string | null;
+    image_url: string | null; 
   };
 }
 
@@ -59,20 +57,7 @@ function App() {
       padding="md"
     >
       <AppShell.Header>
-        <Group h="100%" px="md">
-          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
-          <ActionIcon 
-            onClick={() => setDesktopNavCollapsed((prev) => !prev)} 
-            variant="default" 
-            size="lg" 
-            aria-label="Toggle navigation"
-            visibleFrom="sm" 
-          >
-            {desktopNavCollapsed ? <IconLayoutSidebarRightCollapse /> : <IconLayoutSidebarLeftCollapse />}
-          </ActionIcon>
-
-          <Title order={3}>Painel do Viajante</Title> 
-        </Group>
+        
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
@@ -80,6 +65,7 @@ function App() {
       </AppShell.Navbar>
 
       <AppShell.Main w="100vw">
+        {/* Caixa de Busca */}
         <Center> 
           <Paper shadow="xs" p="xl" mb="xl" withBorder style={{ width: '100%', maxWidth: '600px' }}>
             <Group>
@@ -95,49 +81,74 @@ function App() {
           </Paper>
         </Center>
 
-        {/* Resultados */}
         {loading && <Center mt="xl"><Loader /></Center>}
         {error && (
           <Alert mt="xl" variant="light" color="red" title="Erro" icon={<IconAlertCircle />}>
             {error}
           </Alert>
         )}
-        {cityInfo && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="xl" mt="xl">
-            {/* Clima */}
-            <Card shadow="sm" padding="lg" radius="md" withBorder>
-              <Group justify="space-between" mb="xs">
-                <Text fw={500}>Clima em {cityInfo.city}</Text>
-                <IconCloud size={20} />
-              </Group>
-              <Center>
-                <Image
-                  src={cityInfo.weather.icon}
-                  alt={cityInfo.weather.description}
-                  height={80}
-                  width={80}
-                />
-              </Center>
-              <Text ta="center" size="xl" fw={700} mt="md">{cityInfo.weather.temperature}°C</Text>
-              <Text ta="center" c="dimmed" tt="capitalize">{cityInfo.weather.description}</Text>
-            </Card>
 
-            {/* Foto */}
-            {cityInfo.photo?.url && ( // Se houver URL da foto
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Card.Section>
-                  <Image
-                    src={cityInfo.photo.url}
-                    height={200}
-                    alt={`Foto de ${cityInfo.city}`}
-                  />
-                </Card.Section>
-                <Text size="sm" c="dimmed" mt="md">
-                  Foto por: {cityInfo.photo.photographer || 'Desconhecido'} (via Unsplash)
-                </Text>
-              </Card>
-            )}
-          </SimpleGrid>
+        {/* Diário de Bordo*/}
+        {cityInfo && (
+          <Paper shadow="md" p="xl" mt="xl" withBorder radius="md">
+            <Title order={2} mb="lg">{cityInfo.city}</Title>
+            
+            <Grid>
+              {/* Coluna Principal - Informações */}
+              <Grid.Col span={{ base: 12, md: 8 }}>
+                <Stack>
+                  <Title order={4}>Resumo</Title>
+                  <Text c="dimmed">
+                    {cityInfo.wikipedia.summary || "Nenhum resumo disponível."}
+                  </Text>
+                  
+                  {/* Mais info */}
+
+                </Stack>
+              </Grid.Col>
+
+              {/* Coluna Lateral - Widgets */}
+              <Grid.Col span={{ base: 12, md: 4 }}>
+                <Stack gap="lg">
+
+                  {/* 2. CLIMA */}
+                  <Card shadow="sm" padding="lg" radius="md" withBorder>
+                    <Group justify="space-between">
+                      <Stack gap={0}>
+                        <Text fw={500}>Clima Atual</Text>
+                        <Text c="dimmed" tt="capitalize" size="sm">
+                          {cityInfo.weather.description}
+                        </Text>
+                      </Stack>
+                      <Image
+                        src={cityInfo.weather.icon}
+                        alt={cityInfo.weather.description}
+                        w={60} 
+                        h={60}
+                      />
+                    </Group>
+                    <Text ta="center" size="2.5rem" fw={700} my="xs">
+                      {cityInfo.weather.temperature.toFixed(1)}°C 
+                    </Text>
+                  </Card>
+
+                  {/* IMAGEM DA WIKIPEDIA */}
+                  {cityInfo.wikipedia.image_url && (
+                    <Card shadow="sm" padding="lg" radius="md" withBorder>
+                      <Card.Section>
+                        <Image
+                          src={cityInfo.wikipedia.image_url}
+                          height={220}
+                          alt={`Imagem de ${cityInfo.city} (Wikipedia)`}
+                        />
+                      </Card.Section>
+                    </Card>
+                  )}
+                  
+                </Stack>
+              </Grid.Col>
+            </Grid>
+          </Paper>
         )}
       </AppShell.Main>
     </AppShell>
