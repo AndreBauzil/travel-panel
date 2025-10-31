@@ -1,4 +1,5 @@
 require 'httparty'
+require 'wikipedia'
 
 class CityInfoController < ApplicationController
   # Quando acessar GET /city_info
@@ -13,12 +14,13 @@ class CityInfoController < ApplicationController
     end
 
     weather_data = fetch_weather(city, weather_api_key)
-    photo_data = fetch_photo(city+" city", photos_access_key)
+    wikipedia_data = fetch_wikipedia_data(city)
+    # photo_data = fetch_photo(city+" city", photos_access_key)
 
     # Verifica erros
-    if weather_data[:error] || photo_data[:error]
+    if weather_data[:error] || wikipedia_data[:error]
       # Combina as mensagens
-      errors = [weather_data[:error], photo_data[:error]].compact.join('; ')
+      errors = [weather_data[:error], wikipedia_data[:error]].compact.join('; ')
       render json: { error: errors}, status: :bad_gateway
       return
     end
@@ -31,9 +33,9 @@ class CityInfoController < ApplicationController
         description: weather_data[:description],
         icon: weather_data[:icon]
       },
-      photo: {
-        url: photo_data[:url],
-        photographer: photo_data[:photographer]
+      wikipedia: {
+        summary: wikipedia_data[:summary],
+        image_url: wikipedia_data[:image_url]
       }
     }
 
@@ -75,34 +77,59 @@ class CityInfoController < ApplicationController
     end
   end
 
-
-  def fetch_photo(city, access_key)
-    base_url = "https://api.unsplash.com/search/photos"
-    options = {
-      query: {
-        query: city,
-        per_page: 1,
-        orientation: 'landscape'
-      },
-      headers: {
-        'Authorization' => "Client-ID #{access_key}"
-      }
+  def fetch_wikipedia_data(city)
+    Wikipedia.configure {
+      domain 'pt.wikipedia.org'
+      path 'w/api.php'
     }
 
     begin
-      response = HTTParty.get(base_url, options)
-      if response.success? && response.parsed_response['results'].any?
-        photo = response.parsed_response['results'][0]
-
-        return {
-          url: photo['urls']['regular'],
-          photographer: photo['user']['name'],
-        }
-      else
-        return { url: nil, photographer: nil} # Retorna nulo se não encontrar
+      page = Wikipedia.find(city + " (cidade)")
+    rescue Wikipedia::PageNotFound
+      begin
+        page = Wikipedia.find(city)
+      rescue Wikipedia::PageNotFound
+        return { summary: "Nenhuma informação encontrada na Wikipedia para esta cidade.", image_url: nil }
       end
-    rescue HTTParty::Error, StandardError => e
-      return { error: "Erro ao buscar foto: #{e.message}" }
     end
+
+    return {
+      summary: page.summary,
+      image_url: page.main_image_url
+    }
+
+    rescue StandardError => e 
+      return { error: "Erro ao buscar dados da Wikipedia: #{e.message}" }
   end
+
+
+  # def fetch_photo(city, access_key)
+  #   base_url = "https://api.unsplash.com/search/photos"
+  #   options = {
+  #     query: {
+  #       query: city,
+  #       per_page: 1,
+  #       orientation: 'landscape'
+  #     },
+  #     headers: {
+  #       'Authorization' => "Client-ID #{access_key}"
+  #     }
+  #   }
+
+  #   begin
+  #     response = HTTParty.get(base_url, options)
+  #     if response.success? && response.parsed_response['results'].any?
+  #       photo = response.parsed_response['results'][0]
+
+  #       return {
+  #         url: photo['urls']['regular'],
+  #         photographer: photo['user']['name'],
+  #       }
+  #     else
+  #       return { url: nil, photographer: nil} # Retorna nulo se não encontrar
+  #     end
+  #   rescue HTTParty::Error, StandardError => e
+  #     return { error: "Erro ao buscar foto: #{e.message}" }
+  #   end
+  # end
 end
