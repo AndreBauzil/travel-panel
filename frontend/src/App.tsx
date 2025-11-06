@@ -1,11 +1,16 @@
 // frontend/src/App.tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
+
 import {
-  AppShell, Group, TextInput, Button, Paper, Text, Image, Center, Loader, Alert, List, Card, Title, Container, Stack, Grid, UnstyledButton,
-  Collapse
+  AppShell, Group, Button, Paper, Text, Image, Center, Loader, Alert, List, Card, Title, Container, Stack, Grid, UnstyledButton,
+  Collapse, Autocomplete
 } from '@mantine/core'; 
-import { useDisclosure } from '@mantine/hooks';
+import { useDisclosure, useDebouncedValue } from '@mantine/hooks';
+
+import { Carousel } from '@mantine/carousel';
+import '@mantine/carousel/styles.css'
+
 import { IconAlertCircle, IconSparkles } from '@tabler/icons-react'; 
 
 // --- INTERFACES ---
@@ -27,7 +32,7 @@ interface WeatherData {
 
 interface WikipediaData {
   summary: string | null;
-  image_url: string | null;
+  image_urls: [] | null;
   page_title: string;
 }
 
@@ -47,16 +52,22 @@ function App() {
   const [opened, { toggle }] = useDisclosure(); 
   const [desktopNavCollapsed, setDesktopNavCollapsed] = useState(true); 
 
-  const [city, setCity] = useState('');
+  const [city, setCity] = useState(''); 
   const [cityInfo, setCityInfo] = useState<CityInfoData | null>(null);
+
+  const [debouncedCityQuery] = useDebouncedValue(city, 150); 
+  const [autocompleteData, setAutocompleteData] = useState<string[]>([]); 
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isForecastVisible, setIsForecastVisible] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
 
-  const fetchCityInfo = async () => {
-    if (!city) return;
+  const fetchCityInfo = async (cityToFetch?: string) => {
+    const query = cityToFetch || city;
+    if (!query) return;
+    
     setLoading(true);
     setError(null);
     setCityInfo(null);
@@ -64,7 +75,7 @@ function App() {
     setIsSummaryExpanded(false); 
 
     try {
-      const response = await axios.get(`http://localhost:3000/city_info?city=${city}`);
+      const response = await axios.get(`http://localhost:3000/city_info?city=${query}`);
       setCityInfo(response.data);
     } catch (err: any) {
       console.error("Erro ao buscar informações da cidade:", err);
@@ -73,6 +84,30 @@ function App() {
       setLoading(false);
     }
   };
+
+  const handleAutocompleteSubmit = (value: string) => {
+    setCity(value);       // Updates input value
+    fetchCityInfo(value); // Call search immediately with selected value
+  };
+
+  useEffect(() => {
+    const fetchAutocomplete = async () => {
+      if (debouncedCityQuery.length < 3) {
+        setAutocompleteData([]); // Clean sugestions if search too short
+        return;
+      }
+
+      try {
+        const response = await axios.get(`http://localhost:3000/autocomplete_cities?query=${debouncedCityQuery}`);
+        setAutocompleteData(response.data);
+      } catch (err) {
+        console.error("Erro no autocomplete:", err);
+        setAutocompleteData([]); // Cleans on error case
+      }
+    };
+
+    fetchAutocomplete();
+  }, [debouncedCityQuery]); // <-- Runs always that a late value changes
 
   return (
     <AppShell
@@ -97,16 +132,18 @@ function App() {
         <Center>
           <Paper shadow="xs" p="xl" mb="xl" withBorder style={{ width: '100%', maxWidth: '600px' }}>
             <Group>
-              <TextInput
+              <Autocomplete
                 placeholder="Para onde vamos?" 
                 value={city}
-                onChange={(event) => setCity(event.currentTarget.value)}
+                onChange={setCity} 
+                data={autocompleteData}
                 style={{ flex: 1 }}
                 onKeyDown={(event) => { if (event.key === 'Enter') fetchCityInfo(); }}
+                onOptionSubmit={handleAutocompleteSubmit} 
               />
-              <Button onClick={fetchCityInfo} loading={loading}>Explorar</Button>
-            </Group>
-            </Paper>
+              <Button onClick={() => fetchCityInfo()} loading={loading}>Explorar</Button>
+            </Group>  
+          </Paper>
         </Center>
 
         {loading && <Center mt="xl"><Loader /></Center>}
@@ -127,14 +164,20 @@ function App() {
                 <Grid.Col span={{ base: 12, md: 8 }}>
                   <Stack>
                     {/* Image - Wikipedia */}
-                    {cityInfo.wikipedia.image_url && (
+                    {cityInfo.wikipedia.image_urls && cityInfo.wikipedia.image_urls.length > 0 && (
                       <Card shadow="sm" p="lg" radius="md" withBorder>
                         <Card.Section>
-                          <Image
-                            src={cityInfo.wikipedia.image_url}
-                            height={300}
-                            alt={`Imagem de ${cityInfo.city} (Wikipedia)`}
-                          />
+                          <Carousel withIndicators emblaOptions={{loop: true}}>
+                            {cityInfo.wikipedia.image_urls.map((url, index) => (
+                              <Carousel.Slide key={index}>
+                                <Image
+                                  src={url}
+                                  height={300}
+                                  alt={`Imagem ${index + 1} de ${cityInfo.city}`}
+                                />
+                              </Carousel.Slide>
+                            ))}
+                          </Carousel>
                         </Card.Section>
                       </Card>
                     )}
