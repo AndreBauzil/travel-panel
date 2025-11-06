@@ -1,6 +1,9 @@
 Rails.application.routes.draw do
   # Mapeia requisições GET para /city_info para a ação 'index' do CityInfoController
   get '/city_info', to: 'city_info#index'
+
+  # Autocomplete on search input
+  get '/autocomplete_cities', to: 'city_info#autocomplete'
   
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
