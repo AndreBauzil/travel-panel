@@ -3,20 +3,61 @@ require 'mediawiktory'
 
 class CityInfoController < ApplicationController
   # Quando acessar GET /city_info
+  def autocomplete
+    city_query = params[:query]
+    weather_api_key = Rails.application.credentials.weather[:api_key]
+
+    if city_query.blank? || city_query.length < 3
+      render json: [], status: :ok
+      return
+    end
+
+    base_url = "http://api.openweathermap.org/geo/1.0/direct"
+    options = { 
+      query: { 
+        q: city_query, 
+        limit: 5, 
+        appid: weather_api_key 
+      } 
+    }
+    
+    begin
+      response = HTTParty.get(base_url, options)
+      if response.success? && response.parsed_response.any?
+        
+        # Map results to string
+        suggestions = response.parsed_response.map do |city|
+          parts = [city['name'], city['state'], city['country']]
+          parts.compact.reject(&:empty?).join(', ') # Remove nulls/empty and joins all
+        end
+        
+        # Calls .uniq on array to remove all duplicates
+        render json: suggestions.uniq, status: :ok
+        # ---------------------------
+
+      else
+        render json: [], status: :ok
+      end
+    rescue StandardError => e
+      render json: { error: "Erro na geocodificação: #{e.message}" }, status: :service_unavailable
+    end
+  end
+
   def index
-    city = params[:city]
+    full_city_param = params[:city]
     weather_api_key = Rails.application.credentials.weather[:api_key]
     
-    if city.blank?
+    if full_city_param.blank?
       render json: { error: 'Parâmetro "city" é obrigatório' }, status: :bad_request
       return
     end
+
+    simple_city_name = full_city_param.split(',').first.strip
   
-    weather_data = fetch_weather_and_forecast(city, weather_api_key)
-    wikipedia_data = fetch_wikipedia_data(city)
-  
-    # IA Call
-    ai_data = fetch_ai_insights(city, wikipedia_data[:summary])
+    # APIs Calls
+    weather_data = fetch_weather_and_forecast(full_city_param, weather_api_key)
+    wikipedia_data = fetch_wikipedia_data(simple_city_name)
+    ai_data = fetch_ai_insights(simple_city_name, wikipedia_data[:summary])
 
     # Verifiy all errors
     errors = [weather_data[:error], wikipedia_data[:error], ai_data[:error]].compact.join('; ')
@@ -65,7 +106,7 @@ class CityInfoController < ApplicationController
           city: data['city']['name'],
           current_temp: current_data['main']['temp'].round(1),
           current_desc: current_data['weather'][0]['description'],
-          current_icon: "https://openweathermap.org/img/wn/#{current_data['weather'][0]['icon']}@2x.png",
+          current_icon: "https://openweathermap.org/img/wn/#{current_data['weather'][0]['icon'].gsub('n', 'd')}@2x.png",
           forecast: daily_forecast
         }
       else
@@ -107,7 +148,7 @@ class CityInfoController < ApplicationController
         date: day.strftime('%a, %d/%m'), # Format date
         temp_min: data[:temps].min.round(1),
         temp_max: data[:temps].max.round(1),
-        icon: "https://openweathermap.org/img/wn/#{common_icon}@2x.png",
+        icon: "https://openweathermap.org/img/wn/#{common_icon.gsub('n', 'd')}@2x.png",
         description: common_desc
       }
     end
@@ -120,56 +161,93 @@ class CityInfoController < ApplicationController
   def fetch_wikipedia_data(city)
     base_url = 'https://pt.wikipedia.org/w/api.php'
     
-    query_options = {
-      action: 'query',
-      format: 'json',
+    summary_query_options = {
+      action: 'query', format: 'json',
       prop: 'extracts|pageimages',
-      exintro: true,         
-      piprop: 'original',    
-      redirects: true,       
-      utf8: true,
-
-      generator: 'search', 
-      gsrsearch: city,     
-      gsrlimit: 1          
+      exintro: true,
+      piprop: 'original',
+      redirects: true,
+      utf8: true       
     }
   
-    # Search for "City (city)"
+    found_page_title = city # Fallback title
+    summary_clean = "Nenhuma informação encontrada na Wikipedia."
+    main_image_url = nil
+    page_data = nil
+  
     begin
-      response = HTTParty.get(base_url, query: query_options.merge(titles: city + " (cidade)"))
+      # Search for "City (city)"
+      response = HTTParty.get(base_url, query: summary_query_options.merge(titles: city + " (cidade)"))
       page_data = response.parsed_response.dig('query', 'pages')&.values&.first
-    
+
+      # If search for "cidade" fails
       if page_data.nil? || page_data.key?('missing')
-        response = HTTParty.get(base_url, query: query_options.merge(titles: city))
+        response = HTTParty.get(base_url, query: summary_query_options.merge(titles: city))
         page_data = response.parsed_response.dig('query', 'pages')&.values&.first
       end
   
+      # "Smart" search, using generator 
+      if page_data.nil? || page_data.key?('missing')
+        search_query_options = {
+          action: 'query', format: 'json',
+          prop: 'extracts|pageimages',
+          exintro: true, piprop: 'original', redirects: true, utf8: true,
+          generator: 'search',
+          gsrsearch: city, 
+          gsrlimit: 1
+        }
+        response = HTTParty.get(base_url, query: search_query_options)
+        page_data = response.parsed_response.dig('query', 'pages')&.values&.first
+      end
+  
+      # Process data (Any try)
       if page_data && !page_data.key?('missing')
         summary_html = page_data.fetch('extract', '')
-        
         summary_raw = summary_html ? ActionController::Base.helpers.strip_tags(summary_html) : "Nenhum resumo encontrado."
         
-        # Cleaning Block
         summary_clean = summary_raw
-                          .gsub(/\(\[.*?\]\s*\)\s*/, '') # Remove pronunciation guides
-                          .gsub(/&nbsp;/, ' ')           # Replace "&nbsp;"
-                          .gsub(/\s+/, ' ')              # Replace multiple spaces
-                          .strip                       
+                          .gsub(/\(\[.*?\]\s*\)\s*/, '')
+                          .gsub(/&nbsp;/, ' ')
+                          .gsub(/\s+/, ' ')
+                          .strip
         
-        image_url = page_data.dig('original', 'source')
-  
-        return {
-          summary: summary_clean, 
-          image_url: image_url,
-          page_title: page_data.fetch('title', city)
-        }
-      else
-        return { summary: "Nenhuma informação encontrada na Wikipedia.", image_url: nil, page_title: nil }
+        found_page_title = page_data.fetch('title', city)
+        main_image_url = page_data.dig('original', 'source')
       end
   
     rescue StandardError => e
-      return { error: "Erro ao buscar dados da Wikipedia: #{e.message}" }
+      return { error: "Erro ao buscar sumário da Wikipedia: #{e.message}" }
     end
+
+    # Gallery images search
+    gallery_query_options = {
+      action: 'query', format: 'json',
+      prop: 'imageinfo', iiprop: 'url',
+      generator: 'images', gimlimit: 5,
+      titles: found_page_title # Uses title found on first call
+    }
+  
+    image_urls = []
+    begin
+      image_response = HTTParty.get(base_url, query: gallery_query_options)
+      images_data = image_response.parsed_response.dig('query', 'pages')&.values
+  
+      if images_data
+        image_urls = images_data.map { |img| img.dig('imageinfo', 0, 'url') }.compact
+                               .select { |url| url.end_with?('.jpg', '.jpeg', '.png', '.gif') }
+      end
+    rescue StandardError => e
+      puts "Erro ao buscar imagens da galeria: #{e.message}"
+    end
+  
+    # Combine images and return
+    final_image_list = ([main_image_url] + image_urls).compact.uniq
+  
+    return {
+      summary: summary_clean,
+      image_urls: final_image_list,
+      page_title: found_page_title
+    }
   end
   
   # --- AI PROMPT LOGIC ---
