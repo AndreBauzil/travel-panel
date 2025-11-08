@@ -4,14 +4,21 @@ import axios from 'axios';
 
 import {
   AppShell, Group, Button, Paper, Text, Image, Center, Loader, Alert, List, Card, Title, Container, Stack, Grid, UnstyledButton,
-  Collapse, Autocomplete
+  Collapse, Autocomplete,
+  Tabs, Anchor,
+  ThemeIcon
 } from '@mantine/core'; 
 import { useDisclosure, useDebouncedValue } from '@mantine/hooks';
 
 import { Carousel } from '@mantine/carousel';
 import '@mantine/carousel/styles.css'
 
-import { IconAlertCircle, IconSparkles } from '@tabler/icons-react'; 
+import { IconAlertCircle, 
+  IconSparkles, 
+  IconBuildingMonument, 
+  IconToolsKitchen2,  
+  IconBed 
+} from '@tabler/icons-react'; 
 
 // --- INTERFACES ---
 interface ForecastDay {
@@ -32,7 +39,7 @@ interface WeatherData {
 
 interface WikipediaData {
   summary: string | null;
-  image_urls: [] | null;
+  image_urls: string[] | null;
   page_title: string;
 }
 
@@ -41,11 +48,24 @@ interface AIInsightsData {
   quick_tips: string[];
 }
 
+interface Place {
+  name: string;
+  address: string;
+  rating?: number | string;
+}
+
+interface PlacesData {
+  points_of_interest: Place[];
+  restaurants: Place[];
+  hotels: Place[];
+}
+
 interface CityInfoData {
   city: string;
   weather: WeatherData;
   wikipedia: WikipediaData;
-  ai_insights: AIInsightsData; 
+  ai_insights: AIInsightsData;
+  places: PlacesData;
 }
 
 function App() {
@@ -89,6 +109,27 @@ function App() {
     setCity(value);       // Updates input value
     fetchCityInfo(value); // Call search immediately with selected value
   };
+
+  const PlaceCard: React.FC<{ place: Place; city: string; icon: React.ReactNode }> = ({ place, city, icon }) => (
+    <Card shadow="sm" radius="md" withBorder p="sm">
+      <Group>
+        <ThemeIcon variant="light" size="lg" radius="md">
+          {icon}
+        </ThemeIcon>
+        <Stack gap={0}>
+          <Anchor 
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name + ', ' + city)}`}
+            target="_blank"
+            fw={500}
+            size="sm"
+          >
+            {place.name}
+          </Anchor>
+          <Text c="dimmed" size="xs">{place.address}</Text>
+        </Stack>
+      </Group>
+    </Card>
+  );
 
   useEffect(() => {
     const fetchAutocomplete = async () => {
@@ -163,41 +204,43 @@ function App() {
                 {/* Main Column - Info */}
                 <Grid.Col span={{ base: 12, md: 8 }}>
                   <Stack>
-                    {/* Image - Wikipedia */}
-                    {cityInfo.wikipedia.image_urls && cityInfo.wikipedia.image_urls.length > 0 && (
-                      <Card shadow="sm" p="lg" radius="md" withBorder>
-                        <Card.Section>
-                          <Carousel withIndicators emblaOptions={{loop: true}}>
-                            {cityInfo.wikipedia.image_urls.map((url, index) => (
-                              <Carousel.Slide key={index}>
-                                <Image
-                                  src={url}
-                                  height={300}
-                                  alt={`Imagem ${index + 1} de ${cityInfo.city}`}
-                                />
-                              </Carousel.Slide>
-                            ))}
-                          </Carousel>
-                        </Card.Section>
-                      </Card>
-                    )}
-                    
-                    {/* Expandable Summary */}
-                    <Title order={4} mt="md">Sobre</Title>
-                    <Stack gap={0}>
-                      <Text 
-                        c="dimmed" 
-                        lineClamp={isSummaryExpanded ? undefined : 2} 
-                      >
-                        {cityInfo.wikipedia.summary || "Nenhum resumo disponível."}
-                      </Text>
+                      {/* Image - Wikipedia */}
+                      {cityInfo.wikipedia.image_urls && cityInfo.wikipedia.image_urls.length > 0 && (
+                        <Card shadow="sm" p="lg" radius="md" withBorder>
+                          <Card.Section>
+                            <Carousel withIndicators emblaOptions={{loop: true}}>
+                              {cityInfo.wikipedia.image_urls.map((url, index) => (
+                                <Carousel.Slide key={index}>
+                                  <Image
+                                    src={url}
+                                    height={300}
+                                    alt={`Imagem ${index + 1} de ${cityInfo.city}`}
+                                  />
+                                </Carousel.Slide>
+                              ))}
+                            </Carousel>
+                          </Card.Section>
+                        </Card>
+                      )}
                       
-                      <UnstyledButton onClick={() => setIsSummaryExpanded((prev) => !prev)} c="blue" fw={500} size="sm" mt="xs">
-                        {isSummaryExpanded ? "Ver menos" : "Ver mais..."}
-                      </UnstyledButton>
-                    </Stack>
+                      {/* Expandable Summary */}
+                      <Title order={4} mt="md">Sobre</Title>
+                      <Stack gap={0}>
+                        <Text 
+                          c="dimmed" 
+                          lineClamp={isSummaryExpanded ? undefined : 2} 
+                        >
+                          {cityInfo.wikipedia.summary || "Nenhum resumo disponível."}
+                        </Text>
+                        
+                        <UnstyledButton onClick={() => setIsSummaryExpanded((prev) => !prev)} c="blue" fw={500} size="sm" mt="xs">
+                          {isSummaryExpanded ? "Ver menos" : "Ver mais..."}
+                        </UnstyledButton>
+                      </Stack>
 
                   </Stack>
+
+                  
                 </Grid.Col>
 
                 {/* Lateral Column - Widgets */}
@@ -267,7 +310,58 @@ function App() {
                     ))}
                   </List>
                 </Stack>
+
+                <Grid.Col>
+                </Grid.Col>
               </Grid>
+
+              <Title order={4}  mt="xl">Locais de Interesse</Title>
+              <Tabs defaultValue="pois" mt="md">
+                <Tabs.List>
+                  <Tabs.Tab value="pois">Pontos Turísticos</Tabs.Tab>
+                  <Tabs.Tab value="restaurants">Restaurantes</Tabs.Tab>
+                  <Tabs.Tab value="hotels">Hotéis</Tabs.Tab>
+                </Tabs.List>
+
+                {/* Painel for Turistic Places */}
+                <Tabs.Panel value="pois" pt="md">
+                  <Stack gap="xs">
+                    {cityInfo.places.points_of_interest.length > 0 ? (
+                      cityInfo.places.points_of_interest.map((place, index) => (
+                        <PlaceCard key={index} place={place} city={cityInfo.weather.city} icon={<IconBuildingMonument size={20} />} />
+                      ))
+                    ) : (
+                      <Text c="dimmed" size="sm">Nenhum ponto turístico encontrado.</Text>
+                    )}
+                  </Stack>
+                </Tabs.Panel>
+
+                {/* Painel for Restaurants */}
+                <Tabs.Panel value="restaurants" pt="md">
+                  <Stack gap="xs">
+                    {cityInfo.places.restaurants.length > 0 ? (
+                      cityInfo.places.restaurants.map((place, index) => (
+                        <PlaceCard key={index} place={place} city={cityInfo.weather.city} icon={<IconToolsKitchen2 size={20} />} />
+                      ))
+                    ) : (
+                      <Text c="dimmed" size="sm">Nenhum restaurante encontrado.</Text>
+                    )}
+                  </Stack>
+                </Tabs.Panel>
+
+                {/* Painel for Hotels */}
+                <Tabs.Panel value="hotels" pt="md">
+                  <Stack gap="xs">
+                    {cityInfo.places.hotels.length > 0 ? (
+                      cityInfo.places.hotels.map((place, index) => (
+                        <PlaceCard key={index} place={place} city={cityInfo.weather.city} icon={<IconBed size={20} />} />
+                      ))
+                    ) : (
+                      <Text c="dimmed" size="sm">Nenhum hotel encontrado.</Text>
+                    )}
+                  </Stack>
+                </Tabs.Panel>
+              </Tabs>
             </Paper>
           </Container>
         )}
