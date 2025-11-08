@@ -1,5 +1,4 @@
 require 'httparty'
-require 'mediawiktory'
 
 class CityInfoController < ApplicationController
   # Quando acessar GET /city_info

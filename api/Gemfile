@@ -38,10 +38,6 @@ gem "rack-cors"
 # Allows external apis callouts
 gem 'httparty'
 
-# Wikipedia Api call
-# gem 'wikipedia-client'
-gem 'mediawiktory'
-
 # Gemini AI 
 gem 'ruby_llm'
 
