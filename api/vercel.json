@@ -1,0 +1,14 @@
+{
+    "builds": [
+      {
+        "src": "config/routes.rb",
+        "use": "@vercel/ruby"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "config.ru"
+      }
+    ]
+  }
