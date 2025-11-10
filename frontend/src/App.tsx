@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 
 import {
-  AppShell, Group, Button, Paper, Text, Image, Center, Loader, Alert, List, Card, Title, Container, Stack, Grid, UnstyledButton,
+  AppShell, Burger, Group, ActionIcon, Button, Paper, Text, Image, Center, Loader, Alert, List, Card, Title, Container, Stack, Grid, UnstyledButton,
   Collapse, Autocomplete,
   Tabs, Anchor,
   ThemeIcon
@@ -17,6 +17,8 @@ import { IconAlertCircle,
   IconSparkles, 
   IconBuildingMonument, 
   IconToolsKitchen2,  
+  IconLayoutSidebarLeftCollapse, 
+  IconLayoutSidebarRightCollapse,
   IconBed 
 } from '@tabler/icons-react'; 
 
@@ -161,7 +163,21 @@ function App() {
       padding="md"
     >
       <AppShell.Header>
-        {/* ... (Header) ... */}
+        <Group h="100%" px="md">
+          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+
+          <ActionIcon 
+            onClick={() => setDesktopNavCollapsed((prev) => !prev)} 
+            variant="default" 
+            size="lg" 
+            aria-label="Toggle navigation"
+            visibleFrom="sm"
+          >
+            {desktopNavCollapsed ? <IconLayoutSidebarRightCollapse /> : <IconLayoutSidebarLeftCollapse />}
+          </ActionIcon>
+
+          <Title order={3}>Painel do Viajante</Title>
+        </Group>
       </AppShell.Header>
 
       <AppShell.Navbar p="md">
