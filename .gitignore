@@ -21,7 +21,6 @@
 .rubocop_cache/
 .ruby-version
 .ruby-gemset
-Gemfile.lock
 spec/reports/
 
 # Node / Frontend
