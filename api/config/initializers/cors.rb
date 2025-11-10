@@ -9,7 +9,11 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do
     origins(
       "http://127.0.0.1:5173",
+<<<<<<< HEAD
       "https://travel-panel-api.onrender.com"
+=======
+      "https://travel-panel-frontend.onrender.com"
+>>>>>>> 82384dd3e202128750df5bb4c99ad392b66e53be
     )
     
     resource "*",
