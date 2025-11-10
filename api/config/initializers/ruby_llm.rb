@@ -2,5 +2,5 @@
 require 'ruby_llm'
 
 RubyLLM.configure do |config|
-  config.gemini_api_key = Rails.application.credentials.gemini[:api_key]
+  config.gemini_api_key = ENV['GEMINI_API_KEY']
 end

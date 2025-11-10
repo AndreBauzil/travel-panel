@@ -43,7 +43,7 @@ class CityInfoController < ApplicationController
 
   def index
     full_city_param = params[:city]
-    weather_api_key = Rails.application.credentials.weather[:api_key]
+    weather_api_key = ENV['OPENWEATHER_API_KEY']
     
     if full_city_param.blank?
       render json: { error: 'Parâmetro "city" é obrigatório' }, status: :bad_request
