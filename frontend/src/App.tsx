@@ -95,7 +95,7 @@ function App() {
     setIsSummaryExpanded(false); 
 
     try {
-      const response = await axios.get(`http://localhost:3000/city_info?city=${query}`);
+      const response = await axios.get('import.meta.env.VITE_API_BASE_URLL/city_info?city={query}');
       setCityInfo(response.data);
     } catch (err: any) {
       console.error("Erro ao buscar informações da cidade:", err);
@@ -139,7 +139,7 @@ function App() {
       }
 
       try {
-        const response = await axios.get(`http://localhost:3000/autocomplete_cities?query=${debouncedCityQuery}`);
+        const response = await axios.get('import.meta.env.VITE_API_BASE_URL/autocomplete_cities?query={debouncedCityQuery}');
         setAutocompleteData(response.data);
       } catch (err) {
         console.error("Erro no autocomplete:", err);
