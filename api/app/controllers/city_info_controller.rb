@@ -4,7 +4,7 @@ class CityInfoController < ApplicationController
   # Quando acessar GET /city_info
   def autocomplete
     city_query = params[:query]
-    weather_api_key = Rails.application.credentials.weather[:api_key]
+    weather_api_key = ENV['OPENWEATHER_API_KEY']
 
     if city_query.blank? || city_query.length < 3
       render json: [], status: :ok
